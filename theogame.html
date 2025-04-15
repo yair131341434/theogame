@@ -1,0 +1,395 @@
+<!DOCTYPE html>
+<html lang="he">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>תפוס את הג'אנק פוד</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            /* מונע גלילה */
+            font-family: 'Arial', 'Helvetica Neue', Helvetica, sans-serif;
+            /* פונט קריא וסטנדרטי */
+            background-color: #f0f0f0;
+            /* רקע כללי */
+            direction: rtl;
+            /* כיוון טקסט מימין לשמאל */
+        }
+
+        #gameArea {
+            position: relative;
+            width: 100vw;
+            /* רוחב מסך מלא */
+            height: 100vh;
+            /* גובה מסך מלא */
+            /* רקע משופר: גרדיאנט שמיים עדין */
+            background: linear-gradient(to bottom, #87CEEB 0%, #add8e6 100%);
+            /* תכלת בהיר לכהה יותר */
+            overflow: hidden;
+            /* מסתיר אובייקטים שיוצאים מהגבולות */
+            cursor: none;
+            /* מסתיר את סמן העכבר הרגיל מעל אזור המשחק */
+        }
+
+        #player {
+            position: absolute;
+            /* --- שינוי: הגדלת השחקן --- */
+            width: 110px;
+            /* הוגדל */
+            height: 85px;
+            /* הוגדל */
+            /* -------------------------- */
+            bottom: 15px;
+            /* הרמה קלה מהקצה */
+            left: 50%;
+            transform: translateX(-50%);
+            /* ממקם בדיוק באמצע */
+            /* --- === החלף אותי === --- */
+            /* שנה את 'theoface.png' לשם קובץ התמונה שלך (רצוי PNG עם רקע שקוף) */
+            background-image: url('theoface.png');
+            /* --- ================== --- */
+            background-size: contain;
+            /* מבטיח שהתמונה תתאים לגודל שנקבע */
+            background-repeat: no-repeat;
+            background-position: center;
+            z-index: 10;
+            /* מעל אובייקטים נופלים */
+            transition: left 0.05s linear;
+            /* תנועה חלקה יותר לשחקן (אופציונלי) */
+        }
+
+        .fallingObject {
+            position: absolute;
+            /* --- שינוי: הגדלת האובייקטים --- */
+            width: 50px;
+            /* הוגדל */
+            height: 50px;
+            /* הוגדל */
+            font-size: 50px;
+            /* הוגדל - גודל האימוג'י */
+            line-height: 50px;
+            /* הוגדל - ממקם את האימוג'י אנכית */
+            /* -------------------------------- */
+            text-align: center;
+            user-select: none;
+            /* מונע בחירה של הטקסט */
+            z-index: 5;
+            /* הוספת צל קל להבלטה */
+            text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.2);
+        }
+
+        #score,
+        #timer {
+            /* עיצוב משותף לניקוד ולטיימר */
+            position: absolute;
+            top: 15px;
+            font-size: 28px;
+            /* הוגדל */
+            color: white;
+            text-shadow: 2px 2px 4px black;
+            /* צל בולט יותר */
+            z-index: 20;
+            background-color: rgba(0, 0, 0, 0.2);
+            /* רקע שקוף קל להבלטה */
+            padding: 5px 10px;
+            border-radius: 8px;
+        }
+
+        #score {
+            right: 15px;
+            /* מיושר לימין בגלל direction: rtl */
+        }
+
+        /* --- הוספה: עיצוב לטיימר --- */
+        #timer {
+            left: 15px;
+            /* מיושר לשמאל */
+        }
+
+        /* --------------------------- */
+
+        /* שינוי: עיצוב משופר להוראות ולסוף משחק */
+        .overlayMessage {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 22px;
+            /* הוגדל */
+            color: #333;
+            /* צבע טקסט כהה יותר */
+            background-color: rgba(255, 255, 255, 0.9);
+            /* רקע לבן שקוף יותר */
+            padding: 25px 30px;
+            border-radius: 15px;
+            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+            /* צל למראה "צף" */
+            text-align: center;
+            z-index: 30;
+            display: block;
+            /* ברירת מחדל גלוי */
+        }
+
+        #gameOver {
+            display: none;
+            /* התחל מוסתר */
+        }
+
+        .overlayMessage br {
+            margin-bottom: 10px;
+            /* רווח בין שורות בהודעות */
+        }
+
+        .overlayMessage span {
+            /* סגנון להדגשת הניקוד הסופי */
+            font-weight: bold;
+            font-size: 1.2em;
+            color: #007bff;
+            /* צבע כחול */
+        }
+    </style>
+</head>
+
+<body>
+
+    <div id="gameArea">
+        <div id="player"></div>
+        <div id="score">ניקוד: 0</div>
+        <div id="timer">זמן: 60</div>
+        <div id="instructions" class="overlayMessage">
+            <h2>תפוס את הג'אנק פוד!</h2>
+            הזז את האצבע או העכבר כדי לתפוס 🍔🍕🍟<br>
+            הימנע מ-🍎🥦🥕<br><br>
+            <strong>גע במסך/לחץ כדי להתחיל!</strong>
+        </div>
+        <div id="gameOver" class="overlayMessage">
+            <h2>הזמן נגמר!</h2>
+            ניקוד סופי: <span id="finalScore">0</span><br><br>
+            <strong>גע במסך/לחץ כדי לשחק שוב!</strong>
+        </div>
+    </div>
+
+    <audio id="eatingSound" src="Cartoon Eating Sound Effect _ Non Copyrighted _ PP Technical (1).mp3"
+        preload="auto"></audio>
+
+    <script>
+        const gameArea = document.getElementById('gameArea');
+        const player = document.getElementById('player');
+        const scoreDisplay = document.getElementById('score');
+        const instructions = document.getElementById('instructions');
+        const eatingSound = document.getElementById('eatingSound');
+        const timerDisplay = document.getElementById('timer');
+        const gameOverScreen = document.getElementById('gameOver');
+        const finalScoreDisplay = document.getElementById('finalScore');
+
+        let score = 0;
+        let spawnInterval;
+        let fallingObjects = [];
+        let gameActive = false;
+
+        const GAME_DURATION = 60; // שניות
+        let timeLeft = GAME_DURATION;
+        let timerInterval;
+
+        const objectBaseSpeed = 3.5;
+        const spawnRate = 750;
+
+        const junkFood = ['🍔', '🍕', '🍟', '🌭', '🍩', '🍪', '🍿', '🍫', '🍦', '🍰'];
+        const healthyFood = ['🍎', '🥦', '🥕', '🍓', '🍇', '🥬', '🍅', '🌽', '🍊', '🍌'];
+
+        function updateScore(change) {
+            score += change;
+            scoreDisplay.textContent = `ניקוד: ${score}`;
+        }
+
+        function getRandomFood() {
+            const isJunk = Math.random() < 0.65;
+            const foodList = isJunk ? junkFood : healthyFood;
+            const emoji = foodList[Math.floor(Math.random() * foodList.length)];
+            return {
+                emoji: emoji,
+                type: isJunk ? 'junk' : 'healthy'
+            };
+        }
+
+        function spawnObject() {
+            if (!gameActive) return;
+
+            const food = getRandomFood();
+            const obj = document.createElement('div');
+            obj.classList.add('fallingObject');
+            obj.textContent = food.emoji;
+            obj.dataset.type = food.type;
+
+            // קבלת רוחב מה-CSS או שימוש בברירת מחדל - חשוב למיקום
+            const computedStyle = window.getComputedStyle(obj);
+            const objectWidth = parseInt(computedStyle.width) || 50;
+
+            const maxLeft = gameArea.offsetWidth - objectWidth;
+            obj.style.left = Math.random() * maxLeft + 'px';
+            obj.style.top = '-60px';
+
+            obj.dataset.speed = objectBaseSpeed + Math.random() * 2.5;
+
+            gameArea.appendChild(obj);
+            fallingObjects.push(obj);
+        }
+
+        function movePlayer(event) {
+            if (!gameActive) return;
+
+            let targetX;
+            if (event.touches) {
+                targetX = event.touches[0].clientX;
+            } else {
+                targetX = event.clientX;
+            }
+
+            const gameAreaRect = gameArea.getBoundingClientRect();
+            const playerWidth = player.offsetWidth;
+            let newLeft = targetX - gameAreaRect.left - (playerWidth / 2);
+
+            const minLeft = 0;
+            const maxLeft = gameArea.offsetWidth - playerWidth;
+            newLeft = Math.max(minLeft, Math.min(newLeft, maxLeft));
+
+            player.style.left = newLeft + 'px';
+        }
+
+
+        function checkCollision(obj) {
+            const objRect = obj.getBoundingClientRect();
+            const playerRect = player.getBoundingClientRect();
+
+            return (
+                objRect.bottom >= playerRect.top + 10 &&
+                objRect.top <= playerRect.bottom - 10 &&
+                objRect.right >= playerRect.left + 10 &&
+                objRect.left <= playerRect.right - 10
+            );
+        }
+
+        // --- שינוי אחרון: פישוט פונקציית ניגון הסאונד ---
+        function playEatingSound() {
+            if (eatingSound) { // בדוק רק אם האלמנט קיים
+                // נסה קודם לאפס את הזמן, ואז לנגן.
+                eatingSound.currentTime = 0; // החזר להתחלה - חשוב!
+                eatingSound.play().catch(e => {
+                    // רושמים שגיאה לקונסול אם הניגון נכשל, אבל לא עוצרים את המשחק.
+                    console.error("שגיאה בניגון צליל האכילה:", e);
+                });
+            }
+        }
+        // -----------------------------------------------
+
+        function gameLoop() {
+            if (!gameActive) return;
+
+            fallingObjects = fallingObjects.filter(obj => {
+                let currentTop = parseFloat(obj.style.top || 0);
+                let speed = parseFloat(obj.dataset.speed || objectBaseSpeed);
+                obj.style.top = currentTop + speed + 'px';
+
+                // בדיקת התנגשות
+                if (checkCollision(obj)) {
+                    // --- קריאה לפונקציה המשופרת ---
+                    playEatingSound();
+                    // --------------------------------
+
+                    if (obj.dataset.type === 'junk') {
+                        updateScore(10);
+                    } else {
+                        updateScore(-5);
+                    }
+                    obj.remove();
+                    return false; // הסר מהמערך
+                }
+
+                // בדיקה אם יצא מהגבול התחתון
+                if (currentTop > gameArea.offsetHeight) {
+                    obj.remove();
+                    return false; // הסר מהמערך
+                }
+
+                return true; // השאר במשחק
+            });
+
+            // בקש את הפרם הבא
+            requestAnimationFrame(gameLoop);
+        }
+
+        function updateTimer() {
+            timeLeft--;
+            timerDisplay.textContent = `זמן: ${timeLeft}`;
+
+            if (timeLeft <= 0) {
+                endGame();
+            }
+        }
+
+        function endGame() {
+            gameActive = false;
+            clearInterval(spawnInterval);
+            clearInterval(timerInterval);
+
+            fallingObjects.forEach(obj => obj.remove());
+            fallingObjects = [];
+
+            finalScoreDisplay.textContent = score;
+            gameOverScreen.style.display = 'block';
+            instructions.style.display = 'none';
+        }
+
+        function startGame() {
+            if (gameActive) return;
+
+            gameActive = true;
+            instructions.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            score = 0;
+            updateScore(0);
+
+            timeLeft = GAME_DURATION;
+            timerDisplay.textContent = `זמן: ${timeLeft}`;
+            clearInterval(timerInterval);
+            timerInterval = setInterval(updateTimer, 1000);
+
+            fallingObjects.forEach(obj => obj.remove());
+            fallingObjects = [];
+
+            requestAnimationFrame(gameLoop);
+
+            clearInterval(spawnInterval);
+            spawnInterval = setInterval(spawnObject, spawnRate);
+
+            setTimeout(spawnObject, 100);
+        }
+
+        const startOrRestartHandler = () => {
+            if (!gameActive) {
+                if (eatingSound && eatingSound.paused) {
+                    eatingSound.play().then(() => {
+                        eatingSound.pause();
+                        eatingSound.currentTime = 0;
+                    }).catch(e => { });
+                }
+                startGame();
+            }
+        };
+
+        gameArea.addEventListener('mousemove', movePlayer);
+        gameArea.addEventListener('touchmove', function (event) {
+            event.preventDefault();
+            movePlayer(event);
+        }, { passive: false });
+
+        gameArea.addEventListener('mousedown', startOrRestartHandler);
+        gameArea.addEventListener('touchstart', startOrRestartHandler);
+
+    </script>
+
+</body>
+
+</html>
